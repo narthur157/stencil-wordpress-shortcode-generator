@@ -1,19 +1,37 @@
 const fs = require('fs')
 const yargs = require('yargs')
 const chalk = require('chalk')
+const sanitize = require('sanitize-filename')
+const prompts = require('prompts')
 
 const options = yargs
-  .usage('Usage: <filename.json> -c')
-  .option('category', { alias: 'c', describe: 'WP Page Baker category' })
+  .usage('Usage: <filename.json>')
+  .version()
+  .option('category', { type: 'string', alias: 'c', describe: 'WP Page Baker category' })
+  .option('dry', { type: 'bool', alias: 'dr', describe: 'Dry run, output to console instead of files' })
+  .option('baker-path', { type: 'string', alias: 'bp', describe: 'WP Page baker output path', default: 'gen-baker.php' })
+  .option('shortcode-path', { type: 'string', alias: 'sp', describe: 'WP Shortcode php file output path', default: 'gen-shortcodes.php' })
+  .coerce(['baker-path', 'shortcode-path'], sanitize)
+  .option('yes', { alias: 'y', describe: 'Automatically overwrite files and skip all prompts' })
+  .option('debug', { alias: 'd', describe: 'Enable debug logs, log generated files (but still write files)' })
   .command('filename.json')
   .demandCommand(1)
   .argv
+
+if (options.debug) {
+  console.log('Yargs Argv', options)
+}
 
 const pathSpecified = options._[0]
 // Get content from specified
 const docsContent = fs.readFileSync(pathSpecified)
 // Define to JSON type
 const docsJson = JSON.parse(docsContent)
+
+const phpHead = `<?php
+`
+const phpTail = `
+?>`
 
 /*
     {
@@ -79,10 +97,12 @@ ${addFunction}`
 
   const concatted = shortcodes.join('\n\n')
 
-  console.log(chalk.blueBright.bold('WP Shortcodes\n'))
-  console.log(chalk.white.bold(concatted + '\n\n\n'))
+  if (options.dry || options.debug) {
+    console.log(chalk.blueBright.bold('WP Shortcodes\n'))
+    console.log(chalk.white.bold(concatted + '\n\n\n'))
+  }
 
-  return concatted
+  return phpHead + concatted + phpTail
 }
 
 function makeBakerMaps () {
@@ -125,8 +145,7 @@ function makeBakerMaps () {
             "description" => __("Description for foo param.")
           )
       */
-    
-      
+
       // let type = //typeMap[prop.type]
       props += `
     array(
@@ -152,10 +171,44 @@ vc_map( array(
 
   const maps = comps.map(makeBakerMap)
 
-  console.log(chalk.blueBright.bold('WP Page Baker shortcode map php code'))
-  console.log(chalk.white.bold(maps.join('\n\n')))
-  return maps
+  if (options.dry || options.debug) {
+    console.log(chalk.blueBright.bold('WP Page Baker shortcode map php code'))
+    console.log(chalk.white.bold(maps.join('\n\n')))
+  }
+
+  return phpHead + maps + phpTail
 }
 
-makeShortcodes()
-makeBakerMaps()
+const shortcodeFile = makeShortcodes()
+const bakerFile = makeBakerMaps()
+
+async function writeOutput (path, data) {
+  let shouldWriteFile = true
+  if (!options.yes && fs.existsSync(path)) {
+    shouldWriteFile = (await prompts({
+      type: 'confirm',
+      name: 'value',
+      message: `Overwrite existing file at ${path}? (use -y to overwrite automatically)`,
+      initial: false
+    })).value
+  }
+
+  if (shouldWriteFile) {
+    fs.writeFile(path, data, (err) => {
+      if (err) console.error(err)
+    })
+
+    console.log(chalk.blueBright.bold('Wrote generated file to:'), path)
+  }
+
+}
+
+async function writeOutputs () {
+  if (!options.dry) {
+    console.log('\n\n')
+    await writeOutput(options['baker-path'], bakerFile)
+    await writeOutput(options['shortcode-path'], shortcodeFile)
+  }
+}
+
+writeOutputs()
