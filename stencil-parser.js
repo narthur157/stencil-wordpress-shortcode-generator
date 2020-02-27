@@ -69,7 +69,7 @@ exports = module.exports = class StencilParser {
 
       const lowerDashed = comp.tag.replace(/-/g, '_')
       const phpFunction = `function ${lowerDashed}_function($atts = [], $content = null, $tag = '') {${decls}
-    return '<${comp.tag} ${props}></${comp.tag}>';
+    return '<${comp.tag} ${props}>' . $content . '</${comp.tag}>';
 }`
 
       const addFunction = `add_shortcode('${lowerDashed}', '${lowerDashed}_function');`
@@ -130,9 +130,9 @@ ${addFunction}`
     if (hasContent) {
       containerBoilerplate = `
       
-      if ( class_exists( 'WPBakeryShortCodesContainer' ) ) {
-        class WPBakeryShortCode_${snakeCaseTag} extends WPBakeryShortCodesContainer {}
-      }
+  if ( class_exists( 'WPBakeryShortCodesContainer' ) ) {
+    class WPBakeryShortCode_${snakeCaseTag} extends WPBakeryShortCodesContainer {}
+  }
       `
     }
 
