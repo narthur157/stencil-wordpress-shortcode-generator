@@ -109,10 +109,12 @@ ${addFunction}`
 
       const titleCaseProp = makeTagTitleCase(prop.attr)
 
-      // let type = //typeMap[prop.type]
+      const typeMap = new Map([['boolean', 'checkbox']])
+      const type = typeMap.has(prop.type) ? typeMap.get(prop.type) : 'textfield'
+
       propList.push(`
       array(
-        "type" => "textfield",
+        "type" => "${type}",
         "holder" => "div",
         "class" => "",
         "heading" => __("${titleCaseProp}"),
@@ -122,13 +124,26 @@ ${addFunction}`
       )`)
     })
 
+    const hasContent = comp.slots.length > 0
+    let containerBoilerplate = ''
+
+    if (hasContent) {
+      containerBoilerplate = `
+      
+      if ( class_exists( 'WPBakeryShortCodesContainer' ) ) {
+        class WPBakeryShortCode_${snakeCaseTag} extends WPBakeryShortCodesContainer {}
+      }
+      `
+    }
+
     return `
   vc_map( array(
     "name" => __("${titleCaseTag}"),
     "base" => "${snakeCaseTag}",
     "category" => __('${this.options.category ? this.options.category : 'ParserGenerated'}'),
     "params" => array(${propList.join(',')})
-  ));`
+  )); ${containerBoilerplate}
+  `
   }
 
   makeBakerMaps () {
