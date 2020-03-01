@@ -1,6 +1,6 @@
 {
   "name": "stencil-wp-parser",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "A stencil json doc parser that generates wordpress shortcodes and wordpress page baker shortcode maps for your web components",
   "main": "produce-shortcodes.js",
   "dependencies": {

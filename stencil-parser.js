@@ -62,17 +62,20 @@ exports = module.exports = class StencilParser {
               }
               */
         //  props
+        const attrSnake = prop.attr.replace(/-/g, '_')
         decls += `
-    $${prop.name} = $atts['${prop.attr.replace(/-/g, '_')}'];`
-        props += ` ${prop.attr}="$${prop.name}"`
+    $${prop.name} = (gettype($atts) == 'array' && array_key_exists('${attrSnake}', $atts)) ? $atts['${attrSnake}'] : '';
+    $${prop.name}Prop = $${prop.name} ? "${prop.attr}='$${prop.name}'" : '';
+    `
+        props += ` $${prop.name}Prop`
       })
 
       const lowerDashed = comp.tag.replace(/-/g, '_')
       const phpFunction = `function ${lowerDashed}_function($atts = [], $content = null, $tag = '') {${decls}
-    return '<${comp.tag} ${props}>' . $content . '</${comp.tag}>';
+    return "<${comp.tag} ${props}>" . do_shortcode($content) . "</${comp.tag}>";
 }`
 
-      const addFunction = `add_shortcode('${lowerDashed}', '${lowerDashed}_function');`
+      const addFunction = `add_shortcode("${lowerDashed}", "${lowerDashed}_function");`
 
       return `${phpFunction}
         
